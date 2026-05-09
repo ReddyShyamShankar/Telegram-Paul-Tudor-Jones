@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd template for the Trade Signal Generator daemon.
+
+  To install:
+    1. Edit the absolute paths below to match your machine.
+    2. cp com.shyam.tsg.plist ~/Library/LaunchAgents/
+    3. launchctl load  ~/Library/LaunchAgents/com.shyam.tsg.plist
+    4. launchctl start com.shyam.tsg
+
+  To stop / uninstall:
+    launchctl stop  com.shyam.tsg
+    launchctl unload ~/Library/LaunchAgents/com.shyam.tsg.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.shyam.tsg</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/reddyshyamshankar/Documents/Code/Trade Signal Generator/.venv/bin/python</string>
+    <string>-m</string>
+    <string>tsg</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/reddyshyamshankar/Documents/Code/Trade Signal Generator</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/reddyshyamshankar/Documents/Code/Trade Signal Generator/data/tsg.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/reddyshyamshankar/Documents/Code/Trade Signal Generator/data/tsg.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+</dict>
+</plist>

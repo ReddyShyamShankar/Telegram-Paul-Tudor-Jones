@@ -1,0 +1,25 @@
+# Whitelist: 21 pairs across {AUD, NZD, JPY, EUR, CHF, CAD, USD}.
+# OANDA instrument names use underscore (e.g. EUR_USD).
+# pip = the smallest unit of price movement convention used for caption display.
+pairs:
+  - { instrument: EUR_USD, pip: 0.0001 }
+  - { instrument: USD_JPY, pip: 0.01   }
+  - { instrument: USD_CHF, pip: 0.0001 }
+  - { instrument: USD_CAD, pip: 0.0001 }
+  - { instrument: AUD_USD, pip: 0.0001 }
+  - { instrument: NZD_USD, pip: 0.0001 }
+  - { instrument: EUR_JPY, pip: 0.01   }
+  - { instrument: EUR_CHF, pip: 0.0001 }
+  - { instrument: EUR_CAD, pip: 0.0001 }
+  - { instrument: EUR_AUD, pip: 0.0001 }
+  - { instrument: EUR_NZD, pip: 0.0001 }
+  - { instrument: AUD_JPY, pip: 0.01   }
+  - { instrument: NZD_JPY, pip: 0.01   }
+  - { instrument: CAD_JPY, pip: 0.01   }
+  - { instrument: CHF_JPY, pip: 0.01   }
+  - { instrument: AUD_CHF, pip: 0.0001 }
+  - { instrument: NZD_CHF, pip: 0.0001 }
+  - { instrument: CAD_CHF, pip: 0.0001 }
+  - { instrument: AUD_CAD, pip: 0.0001 }
+  - { instrument: NZD_CAD, pip: 0.0001 }
+  - { instrument: AUD_NZD, pip: 0.0001 }
