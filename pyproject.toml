@@ -2,7 +2,7 @@
 name = "tsg"
 version = "0.1.0"
 description = "FX Trade Signal Generator — SMC rules, OANDA data, Telegram delivery"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "ctrader-open-api>=0.9.2",
     "twisted>=23.10",
