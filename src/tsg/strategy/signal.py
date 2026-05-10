@@ -26,16 +26,20 @@ class Signal:
 
 def _format_thesis(direction: str, bias: str, sweep: float, bos: float,
                    atr: float) -> str:
+    """Direct SMC narrative. No glosses, no dashes. Talks to the
+    subscriber as one person."""
     if direction == "long":
         return (
-            f"H4 bias {bias}. H1 swept prior swing low at {sweep:.5f}, then BOS "
-            f"above {bos:.5f}. Entry at OB midpoint with 0.5×ATR ({atr:.5f}) "
-            f"buffer below OB low."
+            f"H4 bias {bias}. H1 ran the prior swing low at {sweep:.5f} "
+            f"to grab liquidity, then broke structure above {bos:.5f}. "
+            f"Entering at the OB midpoint with a 0.5 ATR buffer "
+            f"({atr:.5f}) below the OB low."
         )
     return (
-        f"H4 bias {bias}. H1 swept prior swing high at {sweep:.5f}, then BOS "
-        f"below {bos:.5f}. Entry at OB midpoint with 0.5×ATR ({atr:.5f}) "
-        f"buffer above OB high."
+        f"H4 bias {bias}. H1 ran the prior swing high at {sweep:.5f} "
+        f"to grab liquidity, then broke structure below {bos:.5f}. "
+        f"Entering at the OB midpoint with a 0.5 ATR buffer "
+        f"({atr:.5f}) above the OB high."
     )
 
 

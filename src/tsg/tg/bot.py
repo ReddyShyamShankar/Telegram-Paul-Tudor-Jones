@@ -21,8 +21,11 @@ from typing import Iterable
 
 from telethon import TelegramClient
 
+from datetime import datetime
+
 from ..store.db import TradeMessage, TradeRow
 from ..strategy.signal import Signal
+from .captions import entry_closer, tp_closer, sl_closer
 
 
 log = logging.getLogger(__name__)
@@ -32,31 +35,72 @@ def _pip_distance(pair_pip: float, a: float, b: float) -> int:
     return int(round(abs(a - b) / pair_pip))
 
 
+def _format_rr(rr: float) -> str:
+    """Render RR as `1:N` with integer N when whole, else `1:N.x`."""
+    if abs(rr - round(rr)) < 1e-6:
+        return f"1:{int(round(rr))}"
+    return f"1:{rr:.1f}"
+
+
+def _parse_iso(ts) -> datetime:
+    return ts if isinstance(ts, datetime) else datetime.fromisoformat(ts)
+
+
+def _fmt_price(price: float, pair_pip: float) -> str:
+    """JPY pairs (pip=0.01) → 2 decimals (e.g. 155.90).
+    Non-JPY pairs (pip=0.0001) → 5 decimals (e.g. 1.17500)."""
+    return f"{price:.2f}" if pair_pip >= 0.01 else f"{price:.5f}"
+
+
 def format_signal_caption(signal: Signal, pair_pip: float = 0.0001) -> str:
-    arrow = "🟢 LONG" if signal.direction == "long" else "🔴 SHORT"
-    sl_pips = _pip_distance(pair_pip, signal.entry, signal.stop_loss)
-    tp_pips = _pip_distance(pair_pip, signal.entry, signal.take_profit)
+    """Entry post caption.
+    Bold direction header, levels at pair-aware precision (2 decimals
+    for JPY pairs, 5 for everything else), short SMC thesis, then a
+    direct-voice psychology line rotated per-trade. No emojis, no
+    em-dashes, no parenthetical glosses.
+    """
+    head_dir = "**LONG**" if signal.direction == "long" else "**SHORT**"
+    pair = signal.pair.replace("_", "/")
+    rr = _format_rr(signal.rr)
+    closer = entry_closer(signal.entry_time)
     return (
-        f"{arrow}  {signal.pair.replace('_','/')}  {signal.timeframe}\n"
-        f"Entry:  {signal.entry:.5f}\n"
-        f"SL:     {signal.stop_loss:.5f}   ({sl_pips} pips)\n"
-        f"TP:     {signal.take_profit:.5f}   ({tp_pips} pips)\n"
-        f"R:R:    1:{signal.rr:.1f}\n\n"
-        f"Thesis: {signal.thesis}"
+        f"{head_dir} {pair} · {signal.timeframe}\n"
+        f"Entry: {_fmt_price(signal.entry, pair_pip)}\n"
+        f"Stop Loss: {_fmt_price(signal.stop_loss, pair_pip)}\n"
+        f"Take Profit: {_fmt_price(signal.take_profit, pair_pip)}\n"
+        f"RR: {rr}\n\n"
+        f"{signal.thesis}\n\n"
+        f"{closer}"
     )
 
 
 def format_outcome_caption(trade: TradeRow, outcome: str, note: str,
                            pair_pip: float = 0.0001) -> str:
+    """Exit post caption (quote-reply to entry).
+    No emojis, no em-dashes, direct voice.
+    """
+    pair = trade.pair.replace("_", "/")
+    et = _parse_iso(trade.entry_time)
+
     if outcome == "TP":
         pips = _pip_distance(pair_pip, trade.entry, trade.take_profit)
-        head = f"✅ TP HIT  {trade.pair.replace('_','/')}  +{pips} pips  ({trade.rr:.1f}R)"
+        rr = _format_rr(trade.rr)
+        head = f"**TP HIT** {pair} · +{pips} pips · {rr}"
+        closer = tp_closer(et)
     elif outcome == "SL":
         pips = _pip_distance(pair_pip, trade.entry, trade.stop_loss)
-        head = f"❌ SL HIT  {trade.pair.replace('_','/')}  -{pips} pips  (-1.0R)"
+        head = f"**SL HIT** {pair} · -{pips} pips · 1:1"
+        closer = sl_closer(et)
     else:
-        head = f"🟡 SCRATCHED  {trade.pair.replace('_','/')}  0R"
-    return f"{head}\nNote: {note}"
+        head = f"**SCRATCHED** {pair} · 0R"
+        closer = sl_closer(et)
+
+    body = note.strip() if note and note.strip() else ""
+    parts = [head]
+    if body:
+        parts.append(body)
+    parts.append(closer)
+    return "\n\n".join(parts)
 
 
 class TelegramBroadcaster:
