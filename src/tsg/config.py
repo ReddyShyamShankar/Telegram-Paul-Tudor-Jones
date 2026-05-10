@@ -53,6 +53,12 @@ class Config:
     allow_live: bool
     execution_max_lots: float
 
+    # TradingView session cookies (optional; ~90-day rotation). When set,
+    # chart-img renders private/paid TV indicators on the user's behalf.
+    # Defaults to None so older test fixtures keep working.
+    tv_session_id: str | None = None
+    tv_session_id_sign: str | None = None
+
 
 def _require(env: str) -> str:
     val = os.environ.get(env, "")
@@ -112,6 +118,8 @@ def load_config(pairs_yaml: str = "config/pairs.yaml") -> Config:
         tg_channel_ids=_parse_channel_ids(_require("TG_CHANNEL_IDS")),
 
         chart_img_key=_require("CHART_IMG_API_KEY"),
+        tv_session_id=os.environ.get("TV_SESSION_ID") or None,
+        tv_session_id_sign=os.environ.get("TV_SESSION_ID_SIGN") or None,
         db_path=db_path,
         cache_dir=cache_dir,
         log_level=os.environ.get("TSG_LOG_LEVEL", "INFO"),

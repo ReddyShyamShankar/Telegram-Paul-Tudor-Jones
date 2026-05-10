@@ -1,25 +1,39 @@
-# Whitelist: 21 pairs across {AUD, NZD, JPY, EUR, CHF, CAD, USD}.
-# OANDA instrument names use underscore (e.g. EUR_USD).
-# pip = the smallest unit of price movement convention used for caption display.
+# Whitelist: 28 pairs across {AUD, NZD, JPY, EUR, GBP, CHF, CAD, USD} = all
+# combinations of 8 currencies (8C2 = 28).
+# Instrument names use underscore (e.g. EUR_USD); cTrader maps to "EURUSD".
+# pip = smallest unit of price movement convention used for caption display.
 pairs:
+  # USD-major pairs (auto-execute in v1)
   - { instrument: EUR_USD, pip: 0.0001 }
+  - { instrument: GBP_USD, pip: 0.0001 }
   - { instrument: USD_JPY, pip: 0.01   }
   - { instrument: USD_CHF, pip: 0.0001 }
   - { instrument: USD_CAD, pip: 0.0001 }
   - { instrument: AUD_USD, pip: 0.0001 }
   - { instrument: NZD_USD, pip: 0.0001 }
+  # EUR crosses
+  - { instrument: EUR_GBP, pip: 0.0001 }
   - { instrument: EUR_JPY, pip: 0.01   }
   - { instrument: EUR_CHF, pip: 0.0001 }
   - { instrument: EUR_CAD, pip: 0.0001 }
   - { instrument: EUR_AUD, pip: 0.0001 }
   - { instrument: EUR_NZD, pip: 0.0001 }
+  # GBP crosses
+  - { instrument: GBP_JPY, pip: 0.01   }
+  - { instrument: GBP_CHF, pip: 0.0001 }
+  - { instrument: GBP_CAD, pip: 0.0001 }
+  - { instrument: GBP_AUD, pip: 0.0001 }
+  - { instrument: GBP_NZD, pip: 0.0001 }
+  # JPY crosses
   - { instrument: AUD_JPY, pip: 0.01   }
   - { instrument: NZD_JPY, pip: 0.01   }
   - { instrument: CAD_JPY, pip: 0.01   }
   - { instrument: CHF_JPY, pip: 0.01   }
+  # CHF crosses
   - { instrument: AUD_CHF, pip: 0.0001 }
   - { instrument: NZD_CHF, pip: 0.0001 }
   - { instrument: CAD_CHF, pip: 0.0001 }
+  # remaining
   - { instrument: AUD_CAD, pip: 0.0001 }
   - { instrument: NZD_CAD, pip: 0.0001 }
   - { instrument: AUD_NZD, pip: 0.0001 }

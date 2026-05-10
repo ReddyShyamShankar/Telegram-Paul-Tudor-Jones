@@ -127,7 +127,12 @@ async def amain() -> None:
     )
     await bot.start()
 
-    chart = ChartImg(cfg.chart_img_key, cfg.cache_dir)
+    chart = ChartImg(
+        api_key=cfg.chart_img_key,
+        cache_dir=cfg.cache_dir,
+        tv_session_id=cfg.tv_session_id,
+        tv_session_id_sign=cfg.tv_session_id_sign,
+    )
 
     scanner = Scanner(cfg, store, feed, bot, chart)
     tracker = Tracker(cfg, store, feed, bot, chart)
