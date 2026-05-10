@@ -10,6 +10,7 @@ NOT live trading. NOT connected to cTrader, Telegram, or chart-img.
 """
 from __future__ import annotations
 
+import argparse
 import math
 import sys
 import time
@@ -36,7 +37,7 @@ from tsg.strategy.rr import compute_rr            # noqa: E402
 
 H1_WINDOW = 200          # matches live scanner CTraderClient.fetch_candles count
 H4_WINDOW = 200
-MIN_RR = 3.0
+DEFAULT_MIN_RR = 3.0
 MAX_HOLD_BARS = 720      # ~30 days of H1 bars; longer gets dropped
 TARGET_TRADES = 100
 
@@ -50,9 +51,21 @@ DUKASCOPY_MAJORS = {
 }
 
 OUT_DIR = ROOT / "data"
-HTML_OUT = OUT_DIR / "backtest_report.html"
-MD_OUT = OUT_DIR / "backtest_report.md"
 CACHE_DIR = OUT_DIR / "backtest_cache"
+
+
+def _rr_slug(rr: float) -> str:
+    return f"{rr:.1f}".replace(".", "p")
+
+
+def _out_paths(rr: float) -> tuple[Path, Path]:
+    if abs(rr - DEFAULT_MIN_RR) < 1e-9:
+        return OUT_DIR / "backtest_report.html", OUT_DIR / "backtest_report.md"
+    slug = _rr_slug(rr)
+    return (
+        OUT_DIR / f"backtest_report_rr{slug}.html",
+        OUT_DIR / f"backtest_report_rr{slug}.md",
+    )
 
 
 # ---------- data structures ----------
@@ -187,7 +200,7 @@ def _realized_r(direction: str, entry: float, sl: float, exit_px: float) -> floa
 
 # ---------- pair backtest ----------
 
-def backtest_pair(pair: str, h1_full: pd.DataFrame) -> list[Trade]:
+def backtest_pair(pair: str, h1_full: pd.DataFrame, min_rr: float = DEFAULT_MIN_RR) -> list[Trade]:
     """Replay live scanner on a single pair's H1 history. Returns trades."""
     if h1_full.empty or len(h1_full) < H1_WINDOW + 4:
         return []
@@ -217,7 +230,7 @@ def backtest_pair(pair: str, h1_full: pd.DataFrame) -> list[Trade]:
         setup = find_smc_setup(h1_win, bias)
         if setup is None:
             continue
-        rr = compute_rr(setup, h1_win, min_rr=MIN_RR)
+        rr = compute_rr(setup, h1_win, min_rr=min_rr)
         if not rr.ok:
             continue
 
@@ -358,13 +371,13 @@ def compute_stats(trades: list[Trade]) -> Stats:
 
 # ---------- reports ----------
 
-def render_markdown(trades: list[Trade], stats: Stats) -> str:
+def render_markdown(trades: list[Trade], stats: Stats, min_rr: float = DEFAULT_MIN_RR) -> str:
     lines = []
-    lines.append("# SMC Signal Backtest Report")
+    lines.append(f"# SMC Signal Backtest Report — 1:{min_rr:g} R")
     lines.append("")
     lines.append(f"- **Generated:** {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- **Data:** Dukascopy H1 BID, {DATA_START.date()} → {DATA_END.date()}")
-    lines.append(f"- **Strategy:** H4 bias → H1 SMC sweep+BOS+OB → min RR {MIN_RR}")
+    lines.append(f"- **Strategy:** H4 bias → H1 SMC sweep+BOS+OB → min RR {min_rr:g}")
     lines.append(f"- **Entry model:** market-fill at signal-bar close (matches live scanner)")
     lines.append(f"- **Exit model:** SL or TP first-touch on subsequent H1 bars; SL-first on same-bar tie")
     lines.append(f"- **Concurrency:** max 1 open trade per pair")
@@ -404,7 +417,7 @@ def render_markdown(trades: list[Trade], stats: Stats) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_html(trades: list[Trade], stats: Stats) -> str:
+def render_html(trades: list[Trade], stats: Stats, min_rr: float = DEFAULT_MIN_RR) -> str:
     rows = []
     for i, t in enumerate(trades, 1):
         cls = "win" if t.realized_r > 0 else ("loss" if t.realized_r < 0 else "be")
@@ -436,9 +449,9 @@ tr.loss{{background:#fdf6f6}}
 .summary td:nth-child(2){{font-family:Menlo,monospace;text-align:right}}
 .note{{color:#666;font-size:13px}}
 </style></head><body>
-<h1>SMC Signal Backtest Report</h1>
+<h1>SMC Signal Backtest Report — 1:{min_rr:g} R</h1>
 <p class="note">Generated {datetime.now(timezone.utc).isoformat()}. Data: Dukascopy H1 BID, {DATA_START.date()} → {DATA_END.date()}.
-Strategy: H4 bias → H1 SMC sweep+BOS+OB, min RR {MIN_RR}.
+Strategy: H4 bias → H1 SMC sweep+BOS+OB, min RR {min_rr:g}.
 Entry: market-fill at signal-bar close. Exit: SL or TP first-touch (SL-first on tie).
 Max hold {MAX_HOLD_BARS} H1 bars. <strong>No live trading; pure historical replay.</strong></p>
 
@@ -478,9 +491,10 @@ def load_pairs() -> list[str]:
     return [p["instrument"] for p in data["pairs"]]
 
 
-def main() -> int:
+def run_backtest(min_rr: float) -> int:
     pairs = load_pairs()
-    print(f"[backtest] {len(pairs)} pairs; "
+    html_out, md_out = _out_paths(min_rr)
+    print(f"[backtest] min_rr=1:{min_rr:g}  {len(pairs)} pairs; "
           f"data window {DATA_START.date()} -> {DATA_END.date()} (Dukascopy H1)")
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -497,7 +511,7 @@ def main() -> int:
         if h1.empty:
             print(f"  {pair}: no data")
             continue
-        trades = backtest_pair(pair, h1)
+        trades = backtest_pair(pair, h1, min_rr=min_rr)
         per_pair[pair] = len(trades)
         all_trades.extend(trades)
         print(f"  {pair}: bars={len(h1)} trades={len(trades)} "
@@ -516,14 +530,14 @@ def main() -> int:
 
     stats = compute_stats(last)
 
-    md = render_markdown(last, stats)
-    html = render_html(last, stats)
-    MD_OUT.write_text(md)
-    HTML_OUT.write_text(html)
-    print(f"\n[backtest] wrote {MD_OUT}")
-    print(f"[backtest] wrote {HTML_OUT}")
+    md = render_markdown(last, stats, min_rr=min_rr)
+    html = render_html(last, stats, min_rr=min_rr)
+    md_out.write_text(md)
+    html_out.write_text(html)
+    print(f"\n[backtest] wrote {md_out}")
+    print(f"[backtest] wrote {html_out}")
 
-    print("\n=== SUMMARY ===")
+    print(f"\n=== SUMMARY (1:{min_rr:g} R) ===")
     print(f"Trades            : {stats.n}")
     print(f"Win rate          : {stats.win_rate:.1%}")
     print(f"Total R           : {stats.total_r:+.2f}")
@@ -536,6 +550,22 @@ def main() -> int:
     print(f"Max loss streak   : {stats.max_consecutive_losses}")
     print(f"Sharpe (per-trade): {stats.sharpe_per_trade:.3f}")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Offline SMC backtest")
+    parser.add_argument(
+        "--rr",
+        type=float,
+        nargs="+",
+        default=[DEFAULT_MIN_RR],
+        help="Minimum reward:risk ratio(s). Pass one or more, e.g. --rr 3.5 4 4.5 5",
+    )
+    args = parser.parse_args()
+    rc = 0
+    for r in args.rr:
+        rc |= run_backtest(float(r))
+    return rc
 
 
 if __name__ == "__main__":
