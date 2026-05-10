@@ -1,15 +1,17 @@
 ## STATE
-Trade Signal Generator is live in production on PythonAnywhere as the always-on task "Paul TJ (Telegram + cTrader signal bot)". exec=ON. Demo cTrader account 45561836 (Pepperstone). Telegram broadcasting to 1 channel as user @ptfadmin. Scanner sleeping until next H1 close; tracker polling every 60s. 24/24 unit tests green on Mac (Python 3.13). chart-img v2 wrapper rewritten with correct field names (`stopPrice`/`targetPrice`/`startDatetime`/camelCase overrides/`rgba()` colors) + TV-layout-`gm7qCQc5` palette (mint green / light gray, light theme); `ChartImg.render_layout` added for pixel-exact saved-layout snapshots. Repo `ReddyShyamShankar/Telegram-Paul-Tudor-Jones` at commit 4905eb1 on `main` (worktree changes uncommitted).
+Trade Signal Generator is live on PythonAnywhere as the always-on task "Paul TJ" with exec=ON, cTrader demo 45561836, Telegram broadcasting via @ptfadmin to `Private Trading Floor 🏙` (`-1003771780932`). Chart subsystem rebuilt + locked at v13 (4-pane composite, blue candles, mint/gray RR, locked palette, TV cookies wired). 28-pair coverage incl. GBP. Caption convention locked (no emojis / no em-dashes / direct voice / RR int / pip-aware price precision / rotated psych closers). 42/42 tests green on Mac (Python 3.13). Two new commits on branch `claude/blissful-spence-ed4ece` (`04955db`, `2fb5073`); branch not pushed/merged. Chart-Kit ZIP shipped to `~/Downloads/tsg-chart-kit.zip` for the user's second SMC project. Backtest scripts left untracked.
 
 ## NEXT_LINE
-Watch the Telegram channel for the first SMC signal lifecycle (signal post → outcome quote-reply). On first signal, verify (a) chart-img RR-box renders correctly, (b) cTrader market order fills with broker SL/TP attached, (c) tracker detects close + posts quote-reply.
+Push branch `claude/blissful-spence-ed4ece` to GitHub + open PR into `main`, OR fast-forward main locally then push. Then redeploy PA from updated main so live bot starts using the locked chart palette + new captions on its first real H1-close signal fire.
 
 ## MEMORY_KEY
-tsg-paul-tj-pa-deploy-live
+tsg-chartkit-locked-2026-05-10
 
 ## OPEN_QUESTIONS
-- chart-img drawing field names — RESOLVED 2026-05-10. Correct schema: input `entryPrice`/`stopPrice`/`targetPrice`/`startDatetime` (ISO-8601). Override keys camelCase: `lineColor`/`lineWidth`/`profitZoneColor`/`profitZoneTransparency`/`stopZoneColor`/`stopZoneTransparency`/`showLabel`/`showStats`. Colors only as `rgba(R,G,B,A)`. Default palette mirrors TV layout `gm7qCQc5` (mint green / light gray, light theme). Live-verified via `scripts/tg_smoke_rr.py` and module-path `ChartImg.render()`. Layout-chart endpoint live-verified via `scripts/tg_smoke_layout.py` (msg #17 to channel "Check").
-- cTrader `place_market_order` `volume` units convention — used `lots * 100` per Open API docs; Pepperstone may apply broker-specific lot-size multiplier. First live execution will confirm or expose mis-sizing.
-- Multi-channel broadcast: only 1 channel currently (`-1003771780932`); user mentioned 5–10. Need to add more channel IDs to `TG_CHANNEL_IDS` once user lists them.
-- Cross-pair execution (EUR_AUD, AUD_JPY etc.): currently signal-only. v2 needs USD/quote conversion-rate fetch for pip-value math.
-- PA disk quota: 75% full (767 MB of 1 GB). One bad pip install could push over.
+- cTrader `place_market_order` volume units (Pepperstone broker-specific lot-size multiplier) — first live execution required to confirm.
+- Multi-channel broadcast: still only 1 channel (`-1003771780932`). User mentioned 5–10 eventually. Add IDs to `TG_CHANNEL_IDS` when supplied.
+- Cross-pair execution (EUR_AUD, AUD_JPY, GBP_JPY, GBP_CHF, etc.): signal-only. v2 needs USD/quote conversion-rate fetch.
+- PA disk quota: was 75% full at last check; needs verification post-Pillow install.
+- @ptfadmin not yet a member of `PTJ - 1 H` (`-1003928938607`); production session can't post there. User said they'd add it when ready.
+- TV cookies expire `~2026-08-08`; calendar reminder at `2026-07-29 09:00 IST` already scheduled.
+- Branch `claude/blissful-spence-ed4ece` not pushed/merged into `main` yet. PA still runs `main` at `4905eb1` so the new chart palette + captions are not live for real signals until merge + redeploy.
