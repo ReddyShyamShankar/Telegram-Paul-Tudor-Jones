@@ -51,6 +51,15 @@ CREATE TABLE IF NOT EXISTS trade_messages (
   UNIQUE(trade_id, channel_id)
 );
 CREATE INDEX IF NOT EXISTS idx_tm_trade ON trade_messages(trade_id);
+
+CREATE TABLE IF NOT EXISTS ob_signatures (
+  pair TEXT PRIMARY KEY,
+  sweep_level REAL NOT NULL,
+  bos_level REAL NOT NULL,
+  ob_low REAL NOT NULL,
+  ob_high REAL NOT NULL,
+  last_fired_at TEXT NOT NULL
+);
 """
 
 
@@ -236,3 +245,33 @@ class Store:
         with self._conn() as c:
             r = c.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
             return TradeRow(**dict(r)) if r else None
+
+    # ---------- ob_signatures (same-OB dedup) ----------
+    def get_last_ob_signature(self, pair: str) -> tuple[float, float, float, float] | None:
+        """Return (sweep_level, bos_level, ob_low, ob_high) of the last fired
+        OB on this pair, or None if no OB has ever fired for it."""
+        with self._conn() as c:
+            r = c.execute(
+                "SELECT sweep_level, bos_level, ob_low, ob_high FROM ob_signatures WHERE pair=?",
+                (pair,),
+            ).fetchone()
+            if r is None:
+                return None
+            return (float(r["sweep_level"]), float(r["bos_level"]),
+                    float(r["ob_low"]), float(r["ob_high"]))
+
+    def set_ob_signature(self, pair: str, sweep_level: float, bos_level: float,
+                         ob_low: float, ob_high: float, ts: datetime) -> None:
+        """Upsert the OB signature for this pair to the latest fired one."""
+        with self._conn() as c:
+            c.execute(
+                """INSERT INTO ob_signatures(pair, sweep_level, bos_level, ob_low, ob_high, last_fired_at)
+                   VALUES (?,?,?,?,?,?)
+                   ON CONFLICT(pair) DO UPDATE SET
+                     sweep_level=excluded.sweep_level,
+                     bos_level=excluded.bos_level,
+                     ob_low=excluded.ob_low,
+                     ob_high=excluded.ob_high,
+                     last_fired_at=excluded.last_fired_at""",
+                (pair, sweep_level, bos_level, ob_low, ob_high, ts.isoformat()),
+            )

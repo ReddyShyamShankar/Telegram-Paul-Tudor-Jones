@@ -59,6 +59,9 @@ class Config:
     tv_session_id: str | None = None
     tv_session_id_sign: str | None = None
 
+    # Signal quality gates
+    missed_entry_threshold: float = 0.3  # abort signal if price drifted past entry by > threshold * SL distance
+
 
 def _require(env: str) -> str:
     val = os.environ.get(env, "")
@@ -132,6 +135,7 @@ def load_config(pairs_yaml: str = "config/pairs.yaml") -> Config:
         daily_loss_r_cap=float(os.environ.get("TSG_DAILY_LOSS_R_CAP", "3.0")),
         allow_live=_parse_bool(os.environ.get("TSG_ALLOW_LIVE", "no")),
         execution_max_lots=float(os.environ.get("TSG_EXECUTION_MAX_LOTS", "100.0")),
+        missed_entry_threshold=float(os.environ.get("TSG_MISSED_ENTRY_THRESHOLD", "0.3")),
     )
 
 

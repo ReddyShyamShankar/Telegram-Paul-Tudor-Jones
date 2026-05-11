@@ -6,7 +6,7 @@ Telegram-delivered, with TradingView-style RR-box chart screenshots via
 chart-img.com.
 
 **Hard rules:**
-- Pairs whitelist: 21 combinations of {AUD, NZD, JPY, EUR, CHF, CAD, USD} only (`config/pairs.yaml`).
+- Pairs whitelist: 28 combinations of {AUD, NZD, JPY, EUR, GBP, CHF, CAD, USD} (`config/pairs.yaml`). Auto-execution covers all 28 pairs; cross-pair sizing uses USD/quote conversion from the cTrader feed.
 - Minimum **1:3 risk-to-reward** on every trade. Lower = no signal.
 - One open trade per pair, ≤ 5 concurrent total.
 
