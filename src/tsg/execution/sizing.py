@@ -6,9 +6,15 @@ Rules (from user spec, "Conservative" profile):
 - If math gives < 0.01 lots, force 0.01 (i.e. always trade min lot).
 - Sanity ceiling at `max_lots` (default 100.0) protects against bug-induced
   over-sizing.
-- v1 limitation: USD-major pairs only (base or quote = USD).
-  Cross pairs return ok=False — caller should skip execution but still
-  fire the Telegram signal.
+
+Cross-pair execution (v2):
+- USD-major pairs (base or quote = USD) work without `usd_per_quote_rate`
+  via the legacy `current_price` arg.
+- Cross pairs (neither leg = USD) accept an explicit `usd_per_quote_rate`
+  computed by the caller via `feed.pricing.usd_per_quote()` helper that
+  fetches USD/<quote> or <quote>/USD from the cTrader feed.
+- If neither path is available, cross pairs reject with
+  `cross_pair_unsupported_no_rate`.
 """
 from __future__ import annotations
 
@@ -45,6 +51,7 @@ def compute_lots(
     stop_loss: float,
     pair: str,
     current_price: float,
+    usd_per_quote_rate: float | None = None,
     contract_size: float = CONTRACT_SIZE,
     min_lots: float = 0.01,
     max_lots: float = 100.0,
@@ -53,16 +60,16 @@ def compute_lots(
 
     Assumes account currency is USD.
 
-    For X/USD pair (USD is the quote): pip-distance loss per lot
-        loss_per_lot_usd = sl_distance * contract_size
+    Unified formula:
+        loss_per_lot_usd = sl_distance * contract_size * usd_per_quote_rate
+    where usd_per_quote_rate = "1 unit of quote currency in USD."
 
-    For USD/X pair (USD is the base): we close at the price-in-X then
-    convert back to USD using current_price (the spot mid)
-        loss_per_lot_usd = (sl_distance * contract_size) / current_price
-
-    Cross pair (no USD leg): not supported in v1 — needs USD/quote
-    conversion rate which is not always sourced from the same OANDA-listed
-    spot. Caller should skip execution but still post Telegram signal.
+    Derivation when usd_per_quote_rate is not explicitly provided:
+    - For X/USD pair (USD = quote): usd_per_quote_rate = 1.0
+    - For USD/X pair (USD = base): usd_per_quote_rate = 1 / current_price
+    - For cross pair (no USD leg): caller must pass usd_per_quote_rate
+      (computed via feed.pricing.usd_per_quote). Without it, rejects with
+      cross_pair_unsupported_no_rate.
     """
     if equity_usd <= 0:
         return SizingResult.reject("non_positive_equity")
@@ -80,12 +87,18 @@ def compute_lots(
         return SizingResult.reject("malformed_pair")
     base, quote = parts
 
-    if quote == "USD":
-        loss_per_lot = sl_distance * contract_size
-    elif base == "USD":
-        loss_per_lot = (sl_distance * contract_size) / current_price
-    else:
-        return SizingResult.reject("cross_pair_unsupported")
+    if usd_per_quote_rate is None:
+        if quote == "USD":
+            usd_per_quote_rate = 1.0
+        elif base == "USD":
+            usd_per_quote_rate = 1.0 / current_price
+        else:
+            return SizingResult.reject("cross_pair_unsupported_no_rate")
+
+    if usd_per_quote_rate <= 0:
+        return SizingResult.reject("non_positive_usd_quote_rate")
+
+    loss_per_lot = sl_distance * contract_size * usd_per_quote_rate
 
     if loss_per_lot <= 0:
         return SizingResult.reject("zero_loss_per_lot")

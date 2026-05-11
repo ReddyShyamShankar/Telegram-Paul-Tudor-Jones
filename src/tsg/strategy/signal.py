@@ -22,6 +22,13 @@ class Signal:
     entry_time: datetime
     thesis: str
     timeframe: str
+    # OB signature fields — used for same-OB dedup in scanner. Optional for
+    # back-compat with callsites (tracker) that rebuild Signal from TradeRow
+    # without OB context.
+    sweep_level: float = 0.0
+    bos_level: float = 0.0
+    ob_low: float = 0.0
+    ob_high: float = 0.0
 
 
 def _format_thesis(direction: str, bias: str, sweep: float, bos: float,
@@ -81,5 +88,9 @@ def generate_signal(
         thesis=_format_thesis(setup.direction, bias,
                               setup.sweep_level, setup.bos_level, setup.atr),
         timeframe=timeframe,
+        sweep_level=setup.sweep_level,
+        bos_level=setup.bos_level,
+        ob_low=setup.ob_low,
+        ob_high=setup.ob_high,
     )
     return (sig, "fired")

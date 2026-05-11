@@ -151,6 +151,7 @@ class TelegramBroadcaster:
                 msg = await self._client.send_file(
                     ch,
                     file=io.BytesIO(png) if png else None,
+                    file_name="chart.png",
                     caption=caption,
                     force_document=False,
                 )
@@ -172,6 +173,7 @@ class TelegramBroadcaster:
                 await self._client.send_file(
                     ch,
                     file=io.BytesIO(png) if png else None,
+                    file_name="chart.png",
                     caption=caption,
                     reply_to=tm.message_id,
                     force_document=False,

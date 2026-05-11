@@ -54,14 +54,68 @@ def test_usd_jpy_inverse_pricing():
     assert abs(r.lots - 0.50) < 1e-6
 
 
-def test_cross_pair_rejected_v1():
+def test_cross_pair_rejects_without_usd_rate():
+    """Without a USD/quote conversion rate, cross pairs are unsized."""
     r = compute_lots(
         equity_usd=10_000, risk_pct=0.01,
         entry=1.6500, stop_loss=1.6470, pair="EUR_AUD",
         current_price=1.6500,
     )
     assert not r.ok
-    assert r.reason == "cross_pair_unsupported"
+    assert r.reason == "cross_pair_unsupported_no_rate"
+
+
+def test_cross_pair_accepts_with_usd_rate_eur_aud():
+    """EUR/AUD with AUD/USD=0.66 conversion. SL distance 0.0030 AUD.
+    Loss/lot in AUD = 0.0030 * 100000 = 300 AUD. In USD = 300 * 0.66 = $198.
+    10k * 1% = $100 risk. raw_lots = 100/198 = 0.505 -> floor 0.50."""
+    r = compute_lots(
+        equity_usd=10_000, risk_pct=0.01,
+        entry=1.6500, stop_loss=1.6470, pair="EUR_AUD",
+        current_price=1.6500,
+        usd_per_quote_rate=0.66,
+    )
+    assert r.ok
+    assert abs(r.lots - 0.50) < 1e-6
+
+
+def test_cross_pair_accepts_with_usd_rate_chf_jpy():
+    """CHF/JPY with USD/JPY=150 -> JPY/USD = 1/150. SL distance 0.30 JPY.
+    Loss/lot in JPY = 0.30 * 100000 = 30000 JPY. In USD = 30000 / 150 = $200.
+    10k * 1% = $100 risk. raw_lots = 100/200 = 0.50."""
+    r = compute_lots(
+        equity_usd=10_000, risk_pct=0.01,
+        entry=201.59, stop_loss=201.29, pair="CHF_JPY",
+        current_price=201.59,
+        usd_per_quote_rate=1.0 / 150.0,
+    )
+    assert r.ok
+    assert abs(r.lots - 0.50) < 1e-6
+
+
+def test_explicit_usd_rate_overrides_auto_derivation():
+    """If usd_per_quote_rate is passed for a USD-major pair, it overrides
+    the auto-derivation. Caller-given rate wins."""
+    r = compute_lots(
+        equity_usd=10_000, risk_pct=0.01,
+        entry=1.0850, stop_loss=1.0820, pair="EUR_USD",
+        current_price=1.0850,
+        usd_per_quote_rate=2.0,    # pretend each USD == 2.0 USD
+    )
+    assert r.ok
+    # loss_per_lot = 0.0030 * 100000 * 2.0 = 600. raw = 100/600 = 0.166 -> 0.16
+    assert abs(r.lots - 0.16) < 1e-6
+
+
+def test_non_positive_usd_rate_rejects():
+    r = compute_lots(
+        equity_usd=10_000, risk_pct=0.01,
+        entry=1.6500, stop_loss=1.6470, pair="EUR_AUD",
+        current_price=1.6500,
+        usd_per_quote_rate=0.0,
+    )
+    assert not r.ok
+    assert r.reason == "non_positive_usd_quote_rate"
 
 
 def test_zero_equity_rejected():
