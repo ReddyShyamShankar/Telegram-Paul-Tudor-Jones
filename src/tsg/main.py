@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -158,9 +159,28 @@ def _send_token_death_alert(cfg: Config, reason: str) -> None:
             except Exception:
                 pass
 
+    # Run on an isolated thread + fresh event loop so we don't conflict with
+    # any parent asyncio.run() that may already be on the call stack (e.g.
+    # when _exchange_refresh_token is invoked from inside amain()).
+    def _runner() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(_send())
+        finally:
+            try:
+                loop.close()
+            except Exception:
+                pass
+
     try:
-        asyncio.run(_send())
-        log.info("token-death Telegram alert dispatched")
+        t = threading.Thread(target=_runner, daemon=True)
+        t.start()
+        t.join(timeout=15)
+        if t.is_alive():
+            log.warning("token-death Telegram alert thread timed out after 15s")
+        else:
+            log.info("token-death Telegram alert dispatched")
     except Exception as e:
         log.error("token-death Telegram alert failed: %s", e)
 
